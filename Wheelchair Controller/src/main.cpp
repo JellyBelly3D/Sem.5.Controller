@@ -1,9 +1,12 @@
+#include <Arduino.h>
+
 const int hallPin = 14;  // the number of the Hall sensor pin
 const int ledPin = LED_BUILTIN; 
-int count = 0;
-bool magnet = false;
 
+int count = 0;
 int hallState = 0; 
+
+bool magnet = false;
 
 void setup() {
   // initialize the LED pin as an output:
