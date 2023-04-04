@@ -1,0 +1,24 @@
+# Ignore compiled object files and executables
+*.o
+*.elf
+*.hex
+
+# Ignore the build directory
+/build
+
+# Ignore the Arduino IDE's temporary files
+*.d
+*.cpp.hex
+*.ino.hex
+*.eep
+*.mex
+*.elf.*
+*.hex.*
+*.eep.*
+*.mex.*
+*.lss.*
+*.sym.*
+*.map.*
+
+# Ignore the Arduino IDE's library dependencies
+/libraries
