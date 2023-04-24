@@ -2,8 +2,8 @@
 
 Joystick_ stick;
 
-const float wheelcircumference = 1;
-const int magnetCount = 2;
+const float wheelcircumference = 2;
+const int magnetCount = 9; //xD
 const float distancePerMagnet = wheelcircumference / magnetCount;
 
 const unsigned long magnetRate = 250;
@@ -19,12 +19,26 @@ void setup() {
   pinMode(0, INPUT);
 }
 
+bool lastState = false;
 
 void loop() {
+  PinStatus pin = digitalRead(0);
 
-  bool triggered = digitalRead(0) == LOW ? true: false;
+  bool state = pin == LOW ? true: false;
 
-  digitalWrite(LED_BUILTIN, LOW);
+  bool triggered = false;
+
+  if(lastState != state ){
+    lastState = state;
+
+    if(lastState == true){
+      triggered = true;
+    }else{
+      triggered = false;
+    }
+  }
+
+  digitalWrite(LED_BUILTIN, pin == LOW ? HIGH : LOW);
   /*
   if (millis() >= previousMagnetTime + magnetRate) {
     triggered = true;
@@ -41,10 +55,12 @@ void loop() {
 
     float speed = distancePerMagnet / ((float)timeSinceLastMagnet / 1000.0);
 
-    String time = "Time Since: ";
-    String speed2 = ", Speed: ";
 
-    Serial.println(time + timeSinceLastMagnet + speed2 + speed);
+    Serial.print("Time_Since:");
+    Serial.print(timeSinceLastMagnet);
+    Serial.print(",");
+    Serial.print("Speed:");
+    Serial.println(speed);
   }
 
 
