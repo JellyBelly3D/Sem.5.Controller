@@ -5,12 +5,14 @@
 
 Joystick_ controller;
 
-const float wheelcircumference = 200;  // in centimeters
 const int8_t magnetCount = 9;
+const float wheelcircumference = 200;                              // in centimeters
 const float distancePerMagnet = wheelcircumference / magnetCount;  // in centimeters
-const float maxSpeed = 800;
+const float maxSpeed = 800;                                        // in centimeters per second
+const int8_t stopDelay = 100;                                       // in milliseconds
 const int8_t axisMax = 127;
 
+bool isStopped = true;
 uint32_t lastTriggerTime;
 bool lastHallState = false;
 
@@ -40,10 +42,10 @@ void loop() {
 
       lastTriggerTime = millis();
 
-      float speed = distancePerMagnet / (timeSinceLastMagnet/1000.0f);  // millimeters per millisecond
+      float speed = distancePerMagnet / (timeSinceLastMagnet / 1000.0f);  // millimeters per millisecond
 
       int8_t normalizedSpeed = normalizeSpeed(speed);
-//      digitalWrite(LED_BUILTIN, HIGH);
+      //      digitalWrite(LED_BUILTIN, HIGH);
 
       controller.Y(normalizedSpeed);
 
@@ -56,15 +58,23 @@ void loop() {
       Serial.print(" Speed:");
       Serial.println(speed);
 
-      
+      isStopped = false;
 
       controller.send_now();
     }
   }
+
+
+  if (isStopped == false && lastTriggerTime + stopDelay < millis()) {
+    isStopped = true;
+    controller.Y(0);
+    controller.send_now();
+    Serial.println("Stopped");
+  }
 }
 
 int8_t normalizeSpeed(float speed) {
-  speed = speed > maxSpeed? maxSpeed : speed;
+  speed = speed > maxSpeed ? maxSpeed : speed;
   return (speed * (float)axisMax) / maxSpeed;
 }
 
