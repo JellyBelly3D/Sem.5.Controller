@@ -5,10 +5,10 @@
 
 Joystick_ controller;
 
-const int16_t wheelcircumference = 2000;  // in millimeters
+const float wheelcircumference = 200;  // in centimeters
 const int8_t magnetCount = 9;
-const int16_t distancePerMagnet = wheelcircumference / magnetCount;  // in millimeters
-const int16_t maxSpeed = 10;
+const float distancePerMagnet = wheelcircumference / magnetCount;  // in centimeters
+const float maxSpeed = 800;
 const int8_t axisMax = 127;
 
 uint32_t lastTriggerTime;
@@ -27,7 +27,7 @@ void setup() {
 
 void loop() {
   bool currentHallState = digitalRead(HALL_PIN) == LOW ? true : false;
-  digitalWrite(LED_BUILTIN, LOW);
+  //digitalWrite(LED_BUILTIN, currentHallState?HIGH:LOW);
   //bool currentHallState = mockHallSensor() == LOW ? true : false;
 
   if (lastHallState != currentHallState) {
@@ -40,23 +40,32 @@ void loop() {
 
       lastTriggerTime = millis();
 
-      uint16_t speed = distancePerMagnet / timeSinceLastMagnet;  // millimeters per millisecond
+      float speed = distancePerMagnet / (timeSinceLastMagnet/1000.0f);  // millimeters per millisecond
 
-      uint16_t normalizedSpeed = normalizeSpeed(speed);
+      int8_t normalizedSpeed = normalizeSpeed(speed);
+//      digitalWrite(LED_BUILTIN, HIGH);
 
       controller.Y(normalizedSpeed);
 
-      Serial.print("Y:");
-      Serial.println(normalizedSpeed);
+      Serial.print(" DistancePerMagnet:");
+      Serial.print(distancePerMagnet);
+      Serial.print(" TimeSinceLastMagnet:");
+      Serial.print(timeSinceLastMagnet);
+      Serial.print(" Y:");
+      Serial.print(normalizedSpeed);
+      Serial.print(" Speed:");
+      Serial.println(speed);
+
+      
 
       controller.send_now();
-      digitalWrite(LED_BUILTIN, HIGH);
     }
   }
 }
 
-uint16_t normalizeSpeed(uint16_t speed) {
-  return (speed * axisMax) / maxSpeed;
+int8_t normalizeSpeed(float speed) {
+  speed = speed > maxSpeed? maxSpeed : speed;
+  return (speed * (float)axisMax) / maxSpeed;
 }
 
 
