@@ -1,71 +1,71 @@
 #include <Joystick.h>
 
-Joystick_ stick;
+#define HALL_PIN 0
 
-const float wheelcircumference = 2;
-const int magnetCount = 9; //xD
-const float distancePerMagnet = wheelcircumference / magnetCount;
+
+Joystick_ controller;
+
+const int16_t wheelcircumference = 2000;  // in millimeters
+const int8_t magnetCount = 9;
+const int16_t distancePerMagnet = wheelcircumference / magnetCount;  // in millimeters
+const int16_t maxSpeed = 10;
+const int8_t axisMax = 127;
+
+uint32_t lastTriggerTime;
+bool lastHallState = false;
+
+void setup() {
+  pinMode(LED_BUILTIN, OUTPUT);
+  pinMode(HALL_PIN, INPUT);
+
+  lastTriggerTime = millis();
+
+  controller.useManualSend(true);
+  controller.use8bit(true);
+  controller.begin();
+}
+
+void loop() {
+  bool currentHallState = digitalRead(HALL_PIN) == LOW ? true : false;
+  digitalWrite(LED_BUILTIN, LOW);
+  //bool currentHallState = mockHallSensor() == LOW ? true : false;
+
+  if (lastHallState != currentHallState) {
+
+    lastHallState = currentHallState;
+
+    if (currentHallState == true) {
+
+      uint16_t timeSinceLastMagnet = millis() - lastTriggerTime;
+
+      lastTriggerTime = millis();
+
+      uint16_t speed = distancePerMagnet / timeSinceLastMagnet;  // millimeters per millisecond
+
+      uint16_t normalizedSpeed = normalizeSpeed(speed);
+
+      controller.Y(normalizedSpeed);
+
+      Serial.print("Y:");
+      Serial.println(normalizedSpeed);
+
+      controller.send_now();
+      digitalWrite(LED_BUILTIN, HIGH);
+    }
+  }
+}
+
+uint16_t normalizeSpeed(uint16_t speed) {
+  return (speed * axisMax) / maxSpeed;
+}
+
 
 const unsigned long magnetRate = 250;
 unsigned long previousMagnetTime;
-unsigned long lastTriggerTime;
-
-void setup() {
-  // put your setup code here, to run once:
-  stick.useManualSend(true);
-  stick.begin();
-  lastTriggerTime = millis();
-  pinMode(LED_BUILTIN, OUTPUT);
-  pinMode(0, INPUT);
-}
-
-bool lastState = false;
-
-void loop() {
-  PinStatus pin = digitalRead(0);
-
-  bool state = pin == LOW ? true: false;
-
-  bool triggered = false;
-
-  if(lastState != state ){
-    lastState = state;
-
-    if(lastState == true){
-      triggered = true;
-    }else{
-      triggered = false;
-    }
-  }
-
-  digitalWrite(LED_BUILTIN, pin == LOW ? HIGH : LOW);
-  /*
-  if (millis() >= previousMagnetTime + magnetRate) {
-    triggered = true;
+PinStatus mockHallSensor() {
+  if (millis() >= previousMagnetTime + magnetRate * (sin(millis() / 1000) / 2 + 0.5)) {
     previousMagnetTime = millis();
-    digitalWrite(LED_BUILTIN, HIGH);
+    return LOW;
   }
-  */
-
-
-  if (triggered) {
-    unsigned long timeSinceLastMagnet = millis() - lastTriggerTime;
-
-    lastTriggerTime = millis();
-
-    float speed = distancePerMagnet / ((float)timeSinceLastMagnet / 1000.0);
-
-
-    Serial.print("Time_Since:");
-    Serial.print(timeSinceLastMagnet);
-    Serial.print(",");
-    Serial.print("Speed:");
-    Serial.println(speed);
-  }
-
-
-  stick.X(9);
-  stick.Y(5);
-
-  stick.send_now();
+  return HIGH;
 }
