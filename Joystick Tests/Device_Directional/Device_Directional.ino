@@ -6,6 +6,7 @@
 
 #define MOCK_SENSORS false
 #define PRINT_DEBUG true
+#define USE_UNITY_SCALE true
 
 Joystick_ controller;
 
@@ -13,7 +14,7 @@ const int8_t magnetCount = 9;
 const float wheelcircumference = 200;                              // in centimeters
 const float distancePerMagnet = wheelcircumference / magnetCount;  // in centimeters
 const float maxSpeed = 400;                                        // in centimeters per second
-const uint16_t stopDelay = 10000;                                  // in milliseconds
+const uint16_t stopDelay = 5000;                                  // in milliseconds
 const int8_t axisMax = 127;
 
 bool isStopped = true;
@@ -51,6 +52,10 @@ void loop() {
     lastTriggerTime = millis();
 
     isStopped = false;
+
+    #if USE_UNITY_SCALE
+    inputMagnitude = axisMax-inputMagnitude;
+    #endif
 
     controller.Y(direction * inputMagnitude);
     controller.send_now();
