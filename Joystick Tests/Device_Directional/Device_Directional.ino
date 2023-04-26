@@ -5,14 +5,15 @@
 #define HALL_PIN3 2
 
 #define MOCK_SENSORS false
+#define PRINT_DEBUG true
 
 Joystick_ controller;
 
 const int8_t magnetCount = 9;
 const float wheelcircumference = 200;                              // in centimeters
 const float distancePerMagnet = wheelcircumference / magnetCount;  // in centimeters
-const float maxSpeed = 800;                                        // in centimeters per second
-const uint16_t stopDelay = 400;                                      // in milliseconds
+const float maxSpeed = 400;                                        // in centimeters per second
+const uint16_t stopDelay = 10000;                                  // in milliseconds
 const int8_t axisMax = 127;
 
 bool isStopped = true;
@@ -21,9 +22,9 @@ int lastSensorState = 0;
 
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
-  pinMode(HALL_PIN1, INPUT_PULLUP);
-  pinMode(HALL_PIN2, INPUT_PULLUP);
-  pinMode(HALL_PIN3, INPUT_PULLUP);
+  pinMode(HALL_PIN1, INPUT);
+  pinMode(HALL_PIN2, INPUT);
+  pinMode(HALL_PIN3, INPUT);
 
   lastTriggerTime = millis();
 
@@ -36,41 +37,50 @@ void loop() {
 #if MOCK_SENSORS
   int sensorState = readMockSensors();
 #else
+  // sensorState is an int from 0-3.
+  // 0 = noMagnets, 1 = sensor1, 2 = sensor2, 3 = sensor3.
   int sensorState = readSensors();
 #endif
 
   if (sensorState != 0 && lastSensorState != sensorState) {
-
     int8_t inputMagnitude = calculateInputMagnitude();
 
     int8_t direction = calculateInputDirection(sensorState);
 
     lastSensorState = sensorState;
+    lastTriggerTime = millis();
+
+    isStopped = false;
 
     controller.Y(direction * inputMagnitude);
+    controller.send_now();
 
+#if PRINT_DEBUG
+    Serial.print(" SensorState:");
+    Serial.print(sensorState);
     Serial.print(" Y:");
     Serial.print(direction * inputMagnitude);
     Serial.print(" Speed:");
     Serial.println(inputMagnitude);
-
-    isStopped = false;
-
-    controller.send_now();
+#endif
   }
 
   if (isStopped == false && lastTriggerTime + stopDelay < millis()) {
     isStopped = true;
+
     controller.Y(0);
     controller.send_now();
+
+#if PRINT_DEBUG
     Serial.println("Stopped");
+#endif
   }
 }
 
 int readSensors() {
-  int sensor1 = digitalRead(HALL_PIN1) == HIGH ? 1 : 0;
-  int sensor2 = digitalRead(HALL_PIN2) == HIGH ? 2 : 0;
-  int sensor3 = digitalRead(HALL_PIN3) == HIGH ? 3 : 0;
+  int sensor1 = digitalRead(HALL_PIN1) == LOW ? 1 : 0;
+  int sensor2 = digitalRead(HALL_PIN2) == LOW ? 2 : 0;
+  int sensor3 = digitalRead(HALL_PIN3) == LOW ? 3 : 0;
 
   return sensor1 + sensor2 + sensor3;
 }
@@ -78,48 +88,52 @@ int readSensors() {
 int8_t calculateInputMagnitude() {
   uint16_t timeSinceLastTrigger = millis() - lastTriggerTime;
 
-  lastTriggerTime = millis();
-
-  // Calculate speed in Centimeters/Second
-  float speed = distancePerMagnet / (timeSinceLastTrigger / 1000.0f);  // millimeters per millisecond
+  // Calculate speed in cm/s
+  float speed = distancePerMagnet / (timeSinceLastTrigger / 1000.0f);  // unit: cm/s
 
   // Clamp speed to MaxSpeed
   speed = speed > maxSpeed ? maxSpeed : speed;
 
-  // Normalize speed to fit between 0-127
-  int8_t normalizedSpeed = (speed * (float)axisMax) / maxSpeed;
+  // Normalize speed to between 0 and 1
+  float normalizedSpeed = speed / maxSpeed;
 
-  return normalizedSpeed;
+  // Scale normalized speed to be between 0 and 127
+  int8_t axisMagnitude = normalizedSpeed * axisMax;
+
+  return axisMagnitude;
 }
 
 int8_t calculateInputDirection(int sensorState) {
 
-  int direction = 1;
+  int forward = 1;
+  int backward = -1;
+
+  int direction = forward;
 
   // Direction is determined based on the order that the sensorStates come in
   // going from 3 -> 2 would indicate a positive direction while
   // going from 3 -> 1 would indicate a positive direction.
   //
-  // positive <- | -> negative
+  // negative <- | -> positive
   // -----3-----3-----3-----3-
   // ---2-----2-----2-----2---
   // -1-----1-----1-----1-----
 
   switch (lastSensorState) {
     case 1:
-      direction = sensorState == 3 ? 1 : -1;
+      direction = sensorState == 2 ? forward : backward;
       break;
 
     case 2:
-      direction = sensorState == 1 ? 1 : -1;
+      direction = sensorState == 3 ? forward : backward;
       break;
 
     case 3:
-      direction = sensorState == 2 ? 1 : -1;
+      direction = sensorState == 1 ? forward : backward;
       break;
 
     default:
-      direction = 1;
+      direction = forward;
       break;
   }
 
@@ -128,22 +142,20 @@ int8_t calculateInputDirection(int sensorState) {
 
 //========MOCK SENSORS========
 #if MOCK_SENSORS
-int mockFrequency = 200;
 unsigned long lastMockTriggerTime;
 int lastMockState = 1;
 
 int readMockSensors() {
   int output = 0;
 
-  mockFrequency = ((sin(millis()/1200.0f)/2)+0.5f)*150+50;
+  // calculates a sinus curve that goes from 50 to 200
+  int mockFrequency = ((sin(millis() / 1200.0f) / 2) + 0.5f) * 150 + 50;
 
-  int direction = sign(sin(millis()/1000.0f)*100);
-  //int direction = -1;
+  // calulates a sinus curve and takes the sign of it;
+  int direction = sign(sin(millis() / 1000.0f) * 100);
 
   if (lastMockTriggerTime + mockFrequency < millis()) {
     lastMockTriggerTime = millis();
-
-    //Serial.print(direction);
 
     output = lastMockState + direction;
 
@@ -151,19 +163,17 @@ int readMockSensors() {
       output = 1;
     }
 
-    if(output == 0){
+    if (output == 0) {
       output = 3;
     }
 
     lastMockState = output;
-    Serial.print(output * direction);
   }
 
   return output;
 }
 
-int sign(int number){
+int sign(int number) {
   return (number > 0) - (number < 0);
 }
-
 #endif
