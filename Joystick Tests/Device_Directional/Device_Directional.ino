@@ -14,12 +14,15 @@ const int8_t magnetCount = 45;
 const float wheelcircumference = 200;                              // in centimeters
 const float distancePerMagnet = wheelcircumference / magnetCount;  // in centimeters
 const float maxSpeed = 400;                                        // in centimeters per second
-const uint16_t stopDelay = 5000;                                   // in milliseconds
+const uint16_t stopDelay = 100;                                    // in milliseconds
 const int8_t axisMax = 127;
 
 bool isStopped = true;
 uint32_t lastTriggerTime;
 int lastSensorState = 0;
+#define AVERAGE_LENGTH 12
+int8_t previousMagnitudes[AVERAGE_LENGTH];
+int previousIndex = 0;
 
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
@@ -46,6 +49,8 @@ void loop() {
   if (sensorState != 0 && lastSensorState != sensorState) {
     int8_t inputMagnitude = calculateInputMagnitude();
 
+    int8_t averageMagnitude = calculateRollingAverage(inputMagnitude);
+
     int8_t direction = calculateInputDirection(sensorState);
 
     lastSensorState = sensorState;
@@ -57,24 +62,27 @@ void loop() {
     inputMagnitude = axisMax - inputMagnitude;
 #endif
 
-    controller.Y(direction * inputMagnitude);
+    controller.Y(direction * averageMagnitude);
     controller.send_now();
 
 #if PRINT_DEBUG
     Serial.print(" SensorState:");
     Serial.print(sensorState);
     Serial.print(" Y:");
-    Serial.print(direction * inputMagnitude);
+    Serial.print(direction * averageMagnitude);
     Serial.print(" direction:");
     Serial.print(direction);
-    Serial.print(" Speed:");
+    Serial.print(" Average_Magnitude:");
+    Serial.print(averageMagnitude);
+    Serial.print(" Magnitude:");
     Serial.println(inputMagnitude);
 #endif
   }
 
   if (isStopped == false && lastTriggerTime + stopDelay < millis()) {
     isStopped = true;
-
+    // we do this to add the magnitude of 0 to the array previousMagnitudes
+    calculateRollingAverage(0);
     controller.Y(0);
     controller.send_now();
 
@@ -145,6 +153,19 @@ int8_t calculateInputDirection(int sensorState) {
   }
 
   return direction;
+}
+
+int8_t calculateRollingAverage(int8_t magnitude) {
+  previousIndex = (previousIndex + 1) % AVERAGE_LENGTH;
+
+  previousMagnitudes[previousIndex] = magnitude;
+
+  int16_t magnitudeSum = 0;
+  for (int i = 0; i < AVERAGE_LENGTH; i++) {
+    magnitudeSum += previousMagnitudes[i];
+  }
+
+  return magnitudeSum / AVERAGE_LENGTH;
 }
 
 //========MOCK SENSORS========
