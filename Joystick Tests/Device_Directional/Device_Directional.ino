@@ -6,15 +6,15 @@
 
 #define MOCK_SENSORS false
 #define PRINT_DEBUG true
-#define USE_UNITY_SCALE true
+#define USE_UNITY_SCALE false
 
 Joystick_ controller;
 
-const int8_t magnetCount = 9;
+const int8_t magnetCount = 45;
 const float wheelcircumference = 200;                              // in centimeters
 const float distancePerMagnet = wheelcircumference / magnetCount;  // in centimeters
 const float maxSpeed = 400;                                        // in centimeters per second
-const uint16_t stopDelay = 5000;                                  // in milliseconds
+const uint16_t stopDelay = 5000;                                   // in milliseconds
 const int8_t axisMax = 127;
 
 bool isStopped = true;
@@ -53,9 +53,9 @@ void loop() {
 
     isStopped = false;
 
-    #if USE_UNITY_SCALE
-    inputMagnitude = axisMax-inputMagnitude;
-    #endif
+#if USE_UNITY_SCALE
+    inputMagnitude = axisMax - inputMagnitude;
+#endif
 
     controller.Y(direction * inputMagnitude);
     controller.send_now();
@@ -65,6 +65,8 @@ void loop() {
     Serial.print(sensorState);
     Serial.print(" Y:");
     Serial.print(direction * inputMagnitude);
+    Serial.print(" direction:");
+    Serial.print(direction);
     Serial.print(" Speed:");
     Serial.println(inputMagnitude);
 #endif
