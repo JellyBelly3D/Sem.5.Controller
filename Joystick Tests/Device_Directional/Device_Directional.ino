@@ -59,7 +59,7 @@ void loop() {
     isStopped = false;
 
 #if USE_UNITY_SCALE
-    inputMagnitude = axisMax - inputMagnitude;
+    averageMagnitude = axisMax - averageMagnitude;
 #endif
 
     controller.Y(direction * averageMagnitude);
